@@ -6,20 +6,125 @@
   <title>家庭記帳表單</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif; }
-    body { margin: 0; padding: 16px; background: #f4f6f8; color: #222; }
-    .card { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
-    h2 { margin: 0 0 6px; font-size: 20px; }
-    .user-badge { font-size: 13px; color: #555; margin-bottom: 16px; }
-    .form-group { margin-bottom: 14px; }
-    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
-    input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 15px; background: #fff; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: #06c755; }
-    .preview-box { margin-top: 8px; display: none; text-align: center; }
-    .preview-box img { max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid #e1e4e8; }
-    .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; color: #fff; background: #06c755; cursor: pointer; }
-    .btn:disabled { background: #9ad8b4; cursor: not-allowed; }
-    .status { margin-top: 12px; font-size: 14px; text-align: center; min-height: 20px; }
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #f4f6f8;
+      color: #222;
+    }
+    .card {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    }
+    h2 {
+      margin: 0 0 6px;
+      font-size: 20px;
+    }
+    .user-badge {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 16px;
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    input, select, textarea {
+      display: block;
+      width: 100%;
+      height: 44px;
+      padding: 10px 12px;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      font-size: 15px;
+      color: #222;
+      background: #fff;
+    }
+    /* 修正手機端（特別是 iOS / LINE 內建瀏覽器）日期輸入框對齊與高度 */
+    input[type="date"] {
+      -webkit-appearance: none;
+      appearance: none;
+      line-height: 22px;
+    }
+    /* 檔案選擇框不限制固定 44px 高度 */
+    input[type="file"] {
+      height: auto;
+      padding: 9px 12px;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #06c755;
+    }
+    /* 日期欄位 + 快捷按鈕並排 */
+    .date-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .date-row input[type="date"] {
+      flex: 1;
+      min-width: 0;
+    }
+    .btn-today {
+      flex-shrink: 0;
+      height: 44px;
+      padding: 0 14px;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      background: #f6f8fa;
+      color: #333;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-today:active {
+      background: #eaeef2;
+    }
+    .preview-box {
+      margin-top: 8px;
+      display: none;
+      text-align: center;
+    }
+    .preview-box img {
+      max-width: 100%;
+      max-height: 220px;
+      border-radius: 8px;
+      border: 1px solid #e1e4e8;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      background: #06c755;
+      cursor: pointer;
+    }
+    .btn:disabled {
+      background: #9ad8b4;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 12px;
+      font-size: 14px;
+      text-align: center;
+      min-height: 20px;
+    }
   </style>
 </head>
 <body>
@@ -30,7 +135,10 @@
     <form id="ledgerForm">
       <div class="form-group">
         <label for="txDate">消費日期（預設當天） *</label>
-        <input type="date" id="txDate" required />
+        <div class="date-row">
+          <input type="date" id="txDate" required />
+          <button type="button" id="todayBtn" class="btn-today">今天</button>
+        </div>
       </div>
       
       <div class="form-group">
@@ -79,7 +187,7 @@
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby2YeKAmGB00nFr1xeNUUzmubRA46Yhuv9DFsDQWRXvzpz2TEX6svO1nTrVUCeZ4VSq/exec";
 
     let lineProfile = { userId: "", displayName: "未知使用者" };
-    let compressedImage = null; // { base64, mimeType, fileName }
+    let compressedImage = null;
 
     async function initLiff() {
       try {
@@ -114,6 +222,7 @@
       txDateInput.value = getLocalTodayStr();
     }
 
+    document.getElementById("todayBtn").addEventListener("click", resetDateToToday);
     resetDateToToday();
 
     // 圖片等比縮放（最長邊 1280px）並壓縮成 JPEG (品質 0.75)
@@ -178,12 +287,25 @@
       }
     });
 
+    // 當選擇外食時，自動預設金額為 150
+    const categorySelect = document.getElementById("category");
+    const amountInput = document.getElementById("amount");
+    const mealCategories = ["外食"];
+
+    function applyDefaultMealAmount() {
+      if (mealCategories.includes(categorySelect.value)) {
+        amountInput.value = 150;
+      } else if (amountInput.value === "150") {
+        amountInput.value = "";
+      }
+    }
+
     document.getElementById("ledgerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const submitBtn = document.getElementById("submitBtn");
       const statusMsg = document.getElementById("statusMsg");
 
-      const amountNum = Math.abs(Number(document.getElementById("amount").value));
+      const amountNum = Math.abs(Number(amountInput.value));
       if (!amountNum || amountNum <= 0) {
         statusMsg.textContent = "請輸入大於 0 的金額";
         return;
@@ -198,7 +320,7 @@
         displayName: lineProfile.displayName,
         txDate: txDateInput.value || getLocalTodayStr(),
         txType: document.getElementById("txType").value,
-        category: document.getElementById("category").value,
+        category: categorySelect.value,
         amount: amountNum,
         note: document.getElementById("note").value.trim(),
         image: compressedImage ? {
@@ -209,7 +331,6 @@
       };
 
       try {
-        // GAS Web App 跨域 POST 建議使用 text/plain 避免 Preflight 阻擋
         const res = await fetch(GAS_WEB_APP_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -224,6 +345,8 @@
               liff.closeWindow();
             } else {
               document.getElementById("ledgerForm").reset();
+              resetDateToToday();
+              applyDefaultMealAmount();
               document.getElementById("previewBox").style.display = "none";
               compressedImage = null;
               submitBtn.disabled = false;
@@ -237,29 +360,4 @@
         statusMsg.style.color = "#c62828";
         statusMsg.textContent = "送出失敗：" + err.message;
         submitBtn.disabled = false;
-        submitBtn.textContent = "送出審核";
-      }
-    });
-
-    // 當選擇外食時，自動預設金額為 150
-    const categorySelect = document.getElementById("category");
-    const amountInput = document.getElementById("amount");
-    const mealCategories = ["外食"];
-
-    function applyDefaultMealAmount() {
-      if (mealCategories.includes(categorySelect.value)) {
-        amountInput.value = 150;
-      } else if (amountInput.value === "150") {
-        // 切換到非餐飲分類時，若金額仍是預設的 150 就清空，避免誤送
-        amountInput.value = "";
-      }
-    }
-
-    categorySelect.addEventListener("change", applyDefaultMealAmount);
-    // 網頁剛載入時預設分類是「早餐」，直接套用一次 150
-    applyDefaultMealAmount();
-
-    initLiff();
-  </script>
-</body>
-</html>
+        submitBtn.
