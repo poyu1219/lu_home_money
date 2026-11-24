@@ -33,25 +33,24 @@
         <select id="txType" required>
           <option value="日常花費">日常花費（扣款，計入月花費）</option>
           <option value="幫爸爸代墊款">幫爸爸代墊款（補回餘額，不計入個人花費）</option>
-          <option value="爸爸給零用錢">爸爸給零用錢（入帳，不計入個人花費）</option>
         </select>
       </div>
 
       <div class="form-group">
         <label for="category">項目分類 *</label>
         <select id="category" required>
+          <option value="早餐">早餐</option>
           <option value="午餐">午餐</option>
           <option value="晚餐">晚餐</option>
-          <option value="文具">文具</option>
           <option value="交通">交通</option>
-          <option value="零用錢/代墊">零用錢 / 代墊</option>
+          <option value="代墊">代墊</option>
           <option value="其他">其他</option>
         </select>
       </div>
 
       <div class="form-group">
         <label for="amount">金額（請輸入正數） *</label>
-        <input type="number" id="amount" min="1" step="1" placeholder="例如：120" required />
+        <input type="number" id="amount" min="1" step="1" placeholder="例如：150" required />
       </div>
 
       <div class="form-group">
