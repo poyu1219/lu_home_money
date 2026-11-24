@@ -39,9 +39,7 @@
       <div class="form-group">
         <label for="category">項目分類 *</label>
         <select id="category" required>
-          <option value="早餐">早餐</option>
-          <option value="午餐">午餐</option>
-          <option value="晚餐">晚餐</option>
+          <option value="外食">外食</option>
           <option value="交通">交通</option>
           <option value="代墊">代墊</option>
           <option value="其他">其他</option>
@@ -220,6 +218,24 @@
         submitBtn.textContent = "送出審核";
       }
     });
+
+    // 當選擇外食時，自動預設金額為 150
+    const categorySelect = document.getElementById("category");
+    const amountInput = document.getElementById("amount");
+    const mealCategories = ["外食"];
+
+    function applyDefaultMealAmount() {
+      if (mealCategories.includes(categorySelect.value)) {
+        amountInput.value = 150;
+      } else if (amountInput.value === "150") {
+        // 切換到非餐飲分類時，若金額仍是預設的 150 就清空，避免誤送
+        amountInput.value = "";
+      }
+    }
+
+    categorySelect.addEventListener("change", applyDefaultMealAmount);
+    // 網頁剛載入時預設分類是「早餐」，直接套用一次 150
+    applyDefaultMealAmount();
 
     initLiff();
   </script>
