@@ -12,7 +12,7 @@
     }
     body {
       margin: 0;
-      padding: 16px;
+      padding: 14px;
       background: #f4f6f8;
       color: #222;
     }
@@ -20,12 +20,12 @@
       max-width: 480px;
       margin: 0 auto;
       background: #fff;
-      border-radius: 12px;
-      padding: 20px;
+      border-radius: 14px;
+      padding: 18px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
     }
     h2 {
-      margin: 0 0 6px;
+      margin: 0 0 4px;
       font-size: 20px;
     }
     .user-badge {
@@ -34,7 +34,7 @@
       margin-bottom: 16px;
     }
     .form-group {
-      margin-bottom: 14px;
+      margin-bottom: 15px;
     }
     label {
       display: block;
@@ -45,21 +45,24 @@
     input, select, textarea {
       display: block;
       width: 100%;
+      min-width: 0;
       height: 44px;
       padding: 10px 12px;
       border: 1px solid #d0d7de;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 15px;
       color: #222;
       background: #fff;
     }
-    /* 修正手機端（特別是 iOS / LINE 內建瀏覽器）日期輸入框對齊與高度 */
+    /* 修正 iOS / LINE 瀏覽器日期欄位撐高與超出邊框 */
     input[type="date"] {
       -webkit-appearance: none;
       appearance: none;
       line-height: 22px;
     }
-    /* 檔案選擇框不限制固定 44px 高度 */
+    input[type="date"]::-webkit-date-and-time-value {
+      text-align: left;
+    }
     input[type="file"] {
       height: auto;
       padding: 9px 12px;
@@ -68,31 +71,101 @@
       outline: none;
       border-color: #06c755;
     }
-    /* 日期欄位 + 快捷按鈕並排 */
+
+    /* 交易類型分段切換 */
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .seg-btn {
+      padding: 10px 10px;
+      border: 1.5px solid #d0d7de;
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #333;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s ease;
+    }
+    .seg-btn .seg-title {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .seg-btn .seg-sub {
+      display: block;
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+    }
+    .seg-btn.active[data-type="日常花費"] {
+      background: #eafaf0;
+      border-color: #06c755;
+      color: #05662b;
+    }
+    .seg-btn.active[data-type="日常花費"] .seg-sub {
+      color: #067d34;
+    }
+    .seg-btn.active[data-type="幫爸爸代墊款"] {
+      background: #eef5ff;
+      border-color: #2563eb;
+      color: #1d4ed8;
+    }
+    .seg-btn.active[data-type="幫爸爸代墊款"] .seg-sub {
+      color: #1e40af;
+    }
+
+    /* 日期列 + 快捷按鈕 */
     .date-row {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
     }
     .date-row input[type="date"] {
       flex: 1;
-      min-width: 0;
     }
-    .btn-today {
+    .chip-btn {
       flex-shrink: 0;
       height: 44px;
-      padding: 0 14px;
+      padding: 0 11px;
       border: 1px solid #d0d7de;
-      border-radius: 8px;
+      border-radius: 10px;
       background: #f6f8fa;
       color: #333;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .chip-btn:active {
+      background: #e5e9ef;
+    }
+
+    /* 常用金額快選 */
+    .quick-amounts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .amt-chip {
+      flex: 1 1 calc(20% - 7px);
+      min-width: 54px;
+      height: 36px;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #222;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
     }
-    .btn-today:active {
-      background: #eaeef2;
+    .amt-chip.active {
+      background: #06c755;
+      border-color: #06c755;
+      color: #fff;
     }
+
     .preview-box {
       margin-top: 8px;
       display: none;
@@ -104,18 +177,18 @@
       border-radius: 8px;
       border: 1px solid #e1e4e8;
     }
-    .btn {
+    .btn-submit {
       width: 100%;
-      padding: 12px;
+      height: 48px;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 16px;
       font-weight: 700;
       color: #fff;
       background: #06c755;
       cursor: pointer;
     }
-    .btn:disabled {
+    .btn-submit:disabled {
       background: #9ad8b4;
       cursor: not-allowed;
     }
@@ -134,19 +207,27 @@
 
     <form id="ledgerForm">
       <div class="form-group">
+        <label>交易類型 *</label>
+        <input type="hidden" id="txType" value="日常花費" required />
+        <div class="segmented" role="group" aria-label="交易類型">
+          <button type="button" class="seg-btn active" data-type="日常花費">
+            <span class="seg-title">日常花費</span>
+            <span class="seg-sub">扣款・計入月花費</span>
+          </button>
+          <button type="button" class="seg-btn" data-type="幫爸爸代墊款">
+            <span class="seg-title">幫爸爸代墊款</span>
+            <span class="seg-sub">補回餘額・不計個人</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
         <label for="txDate">消費日期（預設當天） *</label>
         <div class="date-row">
           <input type="date" id="txDate" required />
-          <button type="button" id="todayBtn" class="btn-today">今天</button>
+          <button type="button" id="todayBtn" class="chip-btn">今天</button>
+          <button type="button" id="yesterdayBtn" class="chip-btn">昨天</button>
         </div>
-      </div>
-      
-      <div class="form-group">
-        <label for="txType">交易類型 *</label>
-        <select id="txType" required>
-          <option value="日常花費">日常花費（扣款，計入月花費）</option>
-          <option value="幫爸爸代墊款">幫爸爸代墊款（補回餘額，不計入個人花費）</option>
-        </select>
       </div>
 
       <div class="form-group">
@@ -161,7 +242,14 @@
 
       <div class="form-group">
         <label for="amount">金額（請輸入正數） *</label>
-        <input type="number" id="amount" min="1" step="1" placeholder="例如：150" required />
+        <input type="number" id="amount" min="1" step="1" inputmode="numeric" placeholder="例如：150" required />
+        <div class="quick-amounts" id="quickAmounts">
+          <button type="button" class="amt-chip" data-amt="100">100</button>
+          <button type="button" class="amt-chip" data-amt="150">150</button>
+          <button type="button" class="amt-chip" data-amt="200">200</button>
+          <button type="button" class="amt-chip" data-amt="500">500</button>
+          <button type="button" class="amt-chip" data-amt="1000">1000</button>
+        </div>
       </div>
 
       <div class="form-group">
@@ -177,7 +265,7 @@
         </div>
       </div>
 
-      <button type="submit" id="submitBtn" class="btn">送出審核</button>
+      <button type="submit" id="submitBtn" class="btn-submit">送出審核</button>
       <div id="statusMsg" class="status"></div>
     </form>
   </div>
@@ -208,22 +296,93 @@
       }
     }
 
+    // 日期工具：支援今天與昨天
     const txDateInput = document.getElementById("txDate");
 
-    function getLocalTodayStr() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const day = String(now.getDate()).padStart(2, "0");
+    function formatLocalDate(offsetDays = 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     }
 
-    function resetDateToToday() {
-      txDateInput.value = getLocalTodayStr();
+    function setDateOffset(offsetDays = 0) {
+      txDateInput.value = formatLocalDate(offsetDays);
     }
 
-    document.getElementById("todayBtn").addEventListener("click", resetDateToToday);
-    resetDateToToday();
+    document.getElementById("todayBtn").addEventListener("click", () => setDateOffset(0));
+    document.getElementById("yesterdayBtn").addEventListener("click", () => setDateOffset(-1));
+    setDateOffset(0);
+
+    // 常用金額快選與高亮同步
+    const amountInput = document.getElementById("amount");
+    const amtChips = Array.from(document.querySelectorAll(".amt-chip"));
+
+    function syncAmountChips() {
+      const currentVal = String(amountInput.value || "").trim();
+      amtChips.forEach((chip) => {
+        chip.classList.toggle("active", chip.dataset.amt === currentVal);
+      });
+    }
+
+    amtChips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        amountInput.value = chip.dataset.amt;
+        syncAmountChips();
+      });
+    });
+
+    amountInput.addEventListener("input", syncAmountChips);
+
+    // 交易類型分段切換與分類聯動
+    const txTypeInput = document.getElementById("txType");
+    const segBtns = Array.from(document.querySelectorAll(".seg-btn"));
+    const categorySelect = document.getElementById("category");
+
+    function setTxType(typeValue, { syncCategory = true } = {}) {
+      txTypeInput.value = typeValue;
+      segBtns.forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.type === typeValue);
+      });
+
+      if (syncCategory) {
+        if (typeValue === "幫爸爸代墊款") {
+          categorySelect.value = "代墊";
+          if (amountInput.value === "150") {
+            amountInput.value = "";
+          }
+        } else if (typeValue === "日常花費" && categorySelect.value === "代墊") {
+          categorySelect.value = "外食";
+          if (!amountInput.value) {
+            amountInput.value = "150";
+          }
+        }
+        syncAmountChips();
+      }
+    }
+
+    segBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setTxType(btn.dataset.type, { syncCategory: true });
+      });
+    });
+
+    categorySelect.addEventListener("change", () => {
+      if (categorySelect.value === "外食" && !amountInput.value && txTypeInput.value === "日常花費") {
+        amountInput.value = "150";
+      } else if (categorySelect.value !== "外食" && amountInput.value === "150") {
+        amountInput.value = "";
+      }
+      syncAmountChips();
+    });
+
+    // 初始預設：日常花費 + 外食 + 150
+    setTxType("日常花費", { syncCategory: false });
+    categorySelect.value = "外食";
+    amountInput.value = "150";
+    syncAmountChips();
 
     // 圖片等比縮放（最長邊 1280px）並壓縮成 JPEG (品質 0.75)
     function compressImageFile(file, maxSide = 1280, quality = 0.75) {
@@ -287,19 +446,6 @@
       }
     });
 
-    // 當選擇外食時，自動預設金額為 150
-    const categorySelect = document.getElementById("category");
-    const amountInput = document.getElementById("amount");
-    const mealCategories = ["外食"];
-
-    function applyDefaultMealAmount() {
-      if (mealCategories.includes(categorySelect.value)) {
-        amountInput.value = 150;
-      } else if (amountInput.value === "150") {
-        amountInput.value = "";
-      }
-    }
-
     document.getElementById("ledgerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const submitBtn = document.getElementById("submitBtn");
@@ -307,19 +453,21 @@
 
       const amountNum = Math.abs(Number(amountInput.value));
       if (!amountNum || amountNum <= 0) {
+        statusMsg.style.color = "#c62828";
         statusMsg.textContent = "請輸入大於 0 的金額";
         return;
       }
 
       submitBtn.disabled = true;
       submitBtn.textContent = "傳送中...";
+      statusMsg.style.color = "#555";
       statusMsg.textContent = "正在寫入記帳資料...";
 
       const payload = {
         userId: lineProfile.userId,
         displayName: lineProfile.displayName,
-        txDate: txDateInput.value || getLocalTodayStr(),
-        txType: document.getElementById("txType").value,
+        txDate: txDateInput.value || formatLocalDate(0),
+        txType: txTypeInput.value,
         category: categorySelect.value,
         amount: amountNum,
         note: document.getElementById("note").value.trim(),
@@ -345,8 +493,11 @@
               liff.closeWindow();
             } else {
               document.getElementById("ledgerForm").reset();
-              resetDateToToday();
-              applyDefaultMealAmount();
+              setDateOffset(0);
+              setTxType("日常花費", { syncCategory: false });
+              categorySelect.value = "外食";
+              amountInput.value = "150";
+              syncAmountChips();
               document.getElementById("previewBox").style.display = "none";
               compressedImage = null;
               submitBtn.disabled = false;
@@ -360,4 +511,11 @@
         statusMsg.style.color = "#c62828";
         statusMsg.textContent = "送出失敗：" + err.message;
         submitBtn.disabled = false;
-        submitBtn.
+        submitBtn.textContent = "送出審核";
+      }
+    });
+
+    initLiff();
+  </script>
+</body>
+</html>
