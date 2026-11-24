@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>家庭記帳表單</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif; }
+    body { margin: 0; padding: 16px; background: #f4f6f8; color: #222; }
+    .card { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+    h2 { margin: 0 0 6px; font-size: 20px; }
+    .user-badge { font-size: 13px; color: #555; margin-bottom: 16px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 15px; background: #fff; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #06c755; }
+    .preview-box { margin-top: 8px; display: none; text-align: center; }
+    .preview-box img { max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid #e1e4e8; }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; color: #fff; background: #06c755; cursor: pointer; }
+    .btn:disabled { background: #9ad8b4; cursor: not-allowed; }
+    .status { margin-top: 12px; font-size: 14px; text-align: center; min-height: 20px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>新增記帳 / 代墊紀錄</h2>
+    <div id="userBadge" class="user-badge">正在取得 LINE 身分...</div>
+
+    <form id="ledgerForm">
+      <div class="form-group">
+        <label for="txType">交易類型 *</label>
+        <select id="txType" required>
+          <option value="日常花費">日常花費（扣款，計入月花費）</option>
+          <option value="幫爸爸代墊款">幫爸爸代墊款（補回餘額，不計入個人花費）</option>
+          <option value="爸爸給零用錢">爸爸給零用錢（入帳，不計入個人花費）</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="category">項目分類 *</label>
+        <select id="category" required>
+          <option value="午餐">午餐</option>
+          <option value="晚餐">晚餐</option>
+          <option value="文具">文具</option>
+          <option value="交通">交通</option>
+          <option value="零用錢/代墊">零用錢 / 代墊</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="amount">金額（請輸入正數） *</label>
+        <input type="number" id="amount" min="1" step="1" placeholder="例如：120" required />
+      </div>
+
+      <div class="form-group">
+        <label for="note">備註說明</label>
+        <input type="text" id="note" placeholder="例如：便當、買立可帶、幫爸買藥" />
+      </div>
+
+      <div class="form-group">
+        <label for="receiptFile">收據 / 發票照片（選填，自動壓縮）</label>
+        <input type="file" id="receiptFile" accept="image/*" />
+        <div id="previewBox" class="preview-box">
+          <img id="previewImg" alt="收據預覽" />
+        </div>
+      </div>
+
+      <button type="submit" id="submitBtn" class="btn">送出審核</button>
+      <div id="statusMsg" class="status"></div>
+    </form>
+  </div>
+
+  <script>
+    const LIFF_ID = "YOUR_LIFF_ID";
+    const GAS_WEB_APP_URL = "YOUR_GAS_WEB_APP_URL";
+
+    let lineProfile = { userId: "", displayName: "未知使用者" };
+    let compressedImage = null; // { base64, mimeType, fileName }
+
+    async function initLiff() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        const profile = await liff.getProfile();
+        lineProfile = {
+          userId: profile.userId,
+          displayName: profile.displayName
+        };
+        document.getElementById("userBadge").textContent = `目前使用者：${lineProfile.displayName}`;
+      } catch (err) {
+        document.getElementById("userBadge").textContent = "LIFF 初始化失敗，請從 LINE 開啟";
+        console.error(err);
+      }
+    }
+
+    // 圖片等比縮放（最長邊 1280px）並壓縮成 JPEG (品質 0.75)
+    function compressImageFile(file, maxSide = 1280, quality = 0.75) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let { width, height } = img;
+            if (width > maxSide || height > maxSide) {
+              if (width >= height) {
+                height = Math.round((height * maxSide) / width);
+                width = maxSide;
+              } else {
+                width = Math.round((width * maxSide) / height);
+                height = maxSide;
+              }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const dataUrl = canvas.toDataURL("image/jpeg", quality);
+            const base64 = dataUrl.split(",")[1];
+            const cleanName = (file.name || "receipt").replace(/\.[^/.]+$/, "") + ".jpg";
+            resolve({
+              base64,
+              mimeType: "image/jpeg",
+              fileName: cleanName,
+              previewUrl: dataUrl
+            });
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById("receiptFile").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      const previewBox = document.getElementById("previewBox");
+      const previewImg = document.getElementById("previewImg");
+      if (!file) {
+        compressedImage = null;
+        previewBox.style.display = "none";
+        return;
+      }
+      try {
+        document.getElementById("statusMsg").textContent = "正在壓縮照片...";
+        compressedImage = await compressImageFile(file);
+        previewImg.src = compressedImage.previewUrl;
+        previewBox.style.display = "block";
+        document.getElementById("statusMsg").textContent = "";
+      } catch (err) {
+        alert("圖片處理失敗，請換一張照片重試");
+        console.error(err);
+      }
+    });
+
+    document.getElementById("ledgerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submitBtn");
+      const statusMsg = document.getElementById("statusMsg");
+
+      const amountNum = Math.abs(Number(document.getElementById("amount").value));
+      if (!amountNum || amountNum <= 0) {
+        statusMsg.textContent = "請輸入大於 0 的金額";
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "傳送中...";
+      statusMsg.textContent = "正在寫入記帳資料...";
+
+      const payload = {
+        userId: lineProfile.userId,
+        displayName: lineProfile.displayName,
+        txType: document.getElementById("txType").value,
+        category: document.getElementById("category").value,
+        amount: amountNum,
+        note: document.getElementById("note").value.trim(),
+        image: compressedImage ? {
+          base64: compressedImage.base64,
+          mimeType: compressedImage.mimeType,
+          fileName: compressedImage.fileName
+        } : null
+      };
+
+      try {
+        // GAS Web App 跨域 POST 建議使用 text/plain 避免 Preflight 阻擋
+        const res = await fetch(GAS_WEB_APP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.ok) {
+          statusMsg.style.color = "#067d34";
+          statusMsg.textContent = `已送出（${result.memberName}），等待家長核可！`;
+          setTimeout(() => {
+            if (liff.isInClient()) {
+              liff.closeWindow();
+            } else {
+              document.getElementById("ledgerForm").reset();
+              document.getElementById("previewBox").style.display = "none";
+              compressedImage = null;
+              submitBtn.disabled = false;
+              submitBtn.textContent = "送出審核";
+            }
+          }, 1000);
+        } else {
+          throw new Error(result.error || "寫入失敗");
+        }
+      } catch (err) {
+        statusMsg.style.color = "#c62828";
+        statusMsg.textContent = "送出失敗：" + err.message;
+        submitBtn.disabled = false;
+        submitBtn.textContent = "送出審核";
+      }
+    });
+
+    initLiff();
+  </script>
+</body>
+</html>
