@@ -54,7 +54,6 @@
       color: #222;
       background: #fff;
     }
-    /* 修正 iOS / LINE 瀏覽器日期欄位撐高與超出邊框 */
     input[type="date"] {
       -webkit-appearance: none;
       appearance: none;
@@ -79,7 +78,7 @@
       gap: 8px;
     }
     .seg-btn {
-      padding: 10px 10px;
+      padding: 10px;
       border: 1.5px solid #d0d7de;
       border-radius: 10px;
       background: #f8fafc;
@@ -164,6 +163,34 @@
       background: #06c755;
       border-color: #06c755;
       color: #fff;
+    }
+
+    /* 備註快選標籤 */
+    .quick-notes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .note-tag {
+      height: 30px;
+      padding: 0 10px;
+      border: 1px solid #d0d7de;
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #333;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .note-tag:active {
+      background: #e6f7ed;
+      border-color: #06c755;
+      color: #05662b;
+    }
+    .note-tag.clear-tag {
+      background: #fff5f5;
+      border-color: #fecaca;
+      color: #b91c1c;
     }
 
     .preview-box {
@@ -255,6 +282,15 @@
       <div class="form-group">
         <label for="note">備註說明</label>
         <input type="text" id="note" placeholder="例如：便當、買立可帶、幫爸買藥" />
+        <div class="quick-notes" id="quickNotes">
+          <button type="button" class="note-tag" data-note="便當">便當</button>
+          <button type="button" class="note-tag" data-note="飲料">飲料</button>
+          <button type="button" class="note-tag" data-note="早餐">早餐</button>
+          <button type="button" class="note-tag" data-note="捷運/公車">捷運/公車</button>
+          <button type="button" class="note-tag" data-note="幫爸買藥">幫爸買藥</button>
+          <button type="button" class="note-tag" data-note="文具">文具</button>
+          <button type="button" class="note-tag clear-tag" id="clearNoteBtn">清空</button>
+        </div>
       </div>
 
       <div class="form-group">
@@ -296,7 +332,6 @@
       }
     }
 
-    // 日期工具：支援今天與昨天
     const txDateInput = document.getElementById("txDate");
 
     function formatLocalDate(offsetDays = 0) {
@@ -316,7 +351,6 @@
     document.getElementById("yesterdayBtn").addEventListener("click", () => setDateOffset(-1));
     setDateOffset(0);
 
-    // 常用金額快選與高亮同步
     const amountInput = document.getElementById("amount");
     const amtChips = Array.from(document.querySelectorAll(".amt-chip"));
 
@@ -336,7 +370,6 @@
 
     amountInput.addEventListener("input", syncAmountChips);
 
-    // 交易類型分段切換與分類聯動
     const txTypeInput = document.getElementById("txType");
     const segBtns = Array.from(document.querySelectorAll(".seg-btn"));
     const categorySelect = document.getElementById("category");
@@ -378,13 +411,32 @@
       syncAmountChips();
     });
 
-    // 初始預設：日常花費 + 外食 + 150
+    // 備註快選標籤邏輯
+    const noteInput = document.getElementById("note");
+    document.querySelectorAll(".note-tag[data-note]").forEach((tag) => {
+      tag.addEventListener("click", () => {
+        const word = tag.dataset.note;
+        const current = noteInput.value.trim();
+        if (!current) {
+          noteInput.value = word;
+        } else {
+          const parts = current.split("、").map((s) => s.trim()).filter(Boolean);
+          if (!parts.includes(word)) {
+            noteInput.value = `${current}、${word}`;
+          }
+        }
+      });
+    });
+
+    document.getElementById("clearNoteBtn").addEventListener("click", () => {
+      noteInput.value = "";
+    });
+
     setTxType("日常花費", { syncCategory: false });
     categorySelect.value = "外食";
     amountInput.value = "150";
     syncAmountChips();
 
-    // 圖片等比縮放（最長邊 1280px）並壓縮成 JPEG (品質 0.75)
     function compressImageFile(file, maxSide = 1280, quality = 0.75) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -470,7 +522,7 @@
         txType: txTypeInput.value,
         category: categorySelect.value,
         amount: amountNum,
-        note: document.getElementById("note").value.trim(),
+        note: noteInput.value.trim(),
         image: compressedImage ? {
           base64: compressedImage.base64,
           mimeType: compressedImage.mimeType,
