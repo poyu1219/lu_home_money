@@ -71,6 +71,34 @@
       border-color: #06c755;
     }
 
+    /* 記帳對象切換（支援家長代登） */
+    .member-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .member-btn {
+      height: 40px;
+      border: 1.5px solid #d0d7de;
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #333;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .member-btn.active {
+      background: #fff7ed;
+      border-color: #f97316;
+      color: #c2410c;
+    }
+    .member-btn.active[data-member="本人"] {
+      background: #eafaf0;
+      border-color: #06c755;
+      color: #05662b;
+    }
+
     /* 交易類型分段切換 */
     .segmented {
       display: grid;
@@ -233,6 +261,17 @@
     <div id="userBadge" class="user-badge">正在取得 LINE 身分...</div>
 
     <form id="ledgerForm">
+      <!-- 新增：記帳對象（預設本人，家長代登時可一鍵切換） -->
+      <div class="form-group">
+        <label>記帳對象 *</label>
+        <input type="hidden" id="targetMember" value="本人" />
+        <div class="member-group" role="group" aria-label="記帳對象">
+          <button type="button" class="member-btn active" data-member="本人">本人</button>
+          <button type="button" class="member-btn" data-member="妍羽">代登：妍羽</button>
+          <button type="button" class="member-btn" data-member="丞菲">代登：丞菲</button>
+        </div>
+      </div>
+
       <div class="form-group">
         <label>交易類型 *</label>
         <input type="hidden" id="txType" value="日常花費" required />
@@ -323,12 +362,33 @@
           userId: profile.userId,
           displayName: profile.displayName
         };
-        document.getElementById("userBadge").textContent = `目前使用者：${lineProfile.displayName}`;
+        document.getElementById("userBadge").textContent = `操作者：${lineProfile.displayName}`;
       } catch (err) {
         document.getElementById("userBadge").textContent = "LIFF 初始化失敗，請從 LINE 開啟";
         console.error(err);
       }
     }
+
+    // 記帳對象切換邏輯
+    const targetMemberInput = document.getElementById("targetMember");
+    const memberBtns = Array.from(document.querySelectorAll(".member-btn"));
+
+    function setTargetMember(memberName) {
+      targetMemberInput.value = memberName;
+      memberBtns.forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.member === memberName);
+      });
+      // 若切換為幫小朋友代登，自動切回「日常花費」避免誤選代墊
+      if (memberName !== "本人" && txTypeInput.value === "幫爸爸代墊款") {
+        setTxType("日常花費", { syncCategory: true });
+      }
+    }
+
+    memberBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setTargetMember(btn.dataset.member);
+      });
+    });
 
     const txDateInput = document.getElementById("txDate");
 
@@ -409,7 +469,6 @@
       syncAmountChips();
     });
 
-    // 備註快選標籤邏輯
     const noteInput = document.getElementById("note");
     document.querySelectorAll(".note-tag[data-note]").forEach((tag) => {
       tag.addEventListener("click", () => {
@@ -516,6 +575,7 @@
       const payload = {
         userId: lineProfile.userId,
         displayName: lineProfile.displayName,
+        targetMember: targetMemberInput.value, // "本人" | "妍羽" | "丞菲"
         txDate: txDateInput.value || formatLocalDate(0),
         txType: txTypeInput.value,
         category: categorySelect.value,
@@ -543,6 +603,7 @@
               liff.closeWindow();
             } else {
               document.getElementById("ledgerForm").reset();
+              setTargetMember("本人");
               setDateOffset(0);
               setTxType("日常花費", { syncCategory: false });
               categorySelect.value = "外食";
