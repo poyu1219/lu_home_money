@@ -9,7 +9,10 @@
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif; }
     body { margin: 0; padding: 16px; background: #f4f6f8; color: #222; }
     .card { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+    .header-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     h2 { margin: 0 0 6px; font-size: 20px; }
+    .switch-link { font-size: 13px; color: #0e6681; text-decoration: none; font-weight: 600; white-space: nowrap; }
+    .switch-link:hover { text-decoration: underline; }
     .user-badge { font-size: 13px; color: #555; margin-bottom: 16px; }
     .form-group { margin-bottom: 14px; }
     label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
@@ -25,7 +28,10 @@
 </head>
 <body>
   <div class="card">
-    <h2>新增記帳 / 代墊紀錄</h2>
+    <div class="header-row">
+      <h2>新增記帳 / 代墊紀錄</h2>
+      <a id="queryPageLink" href="query.html" class="switch-link">查詢帳單 →</a>
+    </div>
     <div id="userBadge" class="user-badge">正在取得 LINE 身分...</div>
 
     <form id="ledgerForm">
@@ -92,6 +98,7 @@
   <script>
     const LIFF_ID = "2012774343-nGrARQ0f";
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby2YeKAmGB00nFr1xeNUUzmubRA46Yhuv9DFsDQWRXvzpz2TEX6svO1nTrVUCeZ4VSq/exec";
+    const QUERY_LIFF_URL = ""; // 若已建立查詢專用 LIFF，可填入 https://liff.line.me/你的新LIFF_ID；留空則導向同資料夾 query.html
 
     let lineProfile = { userId: "", displayName: "未知使用者" };
     let compressedImage = null;
@@ -99,7 +106,12 @@
     const txDateInput = document.getElementById("txDate");
     const categorySelect = document.getElementById("category");
     const amountInput = document.getElementById("amount");
+    const queryPageLink = document.getElementById("queryPageLink");
     const mealCategories = ["早餐", "午餐", "晚餐"];
+
+    if (QUERY_LIFF_URL) {
+      queryPageLink.href = QUERY_LIFF_URL;
+    }
 
     function getLocalTodayStr() {
       const now = new Date();
