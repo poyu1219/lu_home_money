@@ -135,12 +135,12 @@
       color: #067d34;
     }
     .seg-btn.active[data-type="扣款分擔"] {
-      background: #eef5ff;
-      border-color: #2563eb;
-      color: #1d4ed8;
+      background: #fef2f2;
+      border-color: #ef4444;
+      color: #b91c1c;
     }
     .seg-btn.active[data-type="扣款分擔"] .seg-sub {
-      color: #1e40af;
+      color: #dc2626;
     }
 
     /* 日期列 + 快捷按鈕 */
@@ -261,7 +261,7 @@
     <div id="userBadge" class="user-badge">正在取得 LINE 身分...</div>
 
     <form id="ledgerForm">
-      <!-- 新增：記帳對象（預設本人，家長代登時可一鍵切換） -->
+      <!-- 記帳對象（預設本人，家長代登時可一鍵切換） -->
       <div class="form-group">
         <label>記帳對象 *</label>
         <input type="hidden" id="targetMember" value="本人" />
@@ -274,7 +274,10 @@
 
       <div class="form-group">
         <label>交易類型 *</label>
-        <input type="hidden" id="txType" value="日常花費" required />
+        <select id="txType" required style="display:none;">
+          <option value="日常花費">日常花費（+ 請款，計入爸爸應發放金額）</option>
+          <option value="扣款分擔">扣款分擔（- 從零用錢扣除）</option>
+        </select>
         <div class="segmented" role="group" aria-label="交易類型">
           <button type="button" class="seg-btn active" data-type="日常花費">
             <span class="seg-title">日常花費</span>
@@ -294,16 +297,6 @@
           <button type="button" id="todayBtn" class="chip-btn">今天</button>
           <button type="button" id="yesterdayBtn" class="chip-btn">昨天</button>
         </div>
-      </div>
-
-      <div class="form-group">
-        <label for="category">項目分類 *</label>
-        <select id="category" required>
-          <option value="外食">外食</option>
-          <option value="交通">交通</option>
-          <option value="代墊">代墊</option>
-          <option value="其他">其他</option>
-        </select>
       </div>
 
       <div class="form-group">
@@ -378,10 +371,6 @@
       memberBtns.forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.member === memberName);
       });
-      // 若切換為幫小朋友代登，自動切回「日常花費」避免誤選代墊
-      if (memberName !== "本人" && txTypeInput.value === "幫爸爸代墊款") {
-        setTxType("日常花費", { syncCategory: true });
-      }
     }
 
     memberBtns.forEach((btn) => {
@@ -428,45 +417,20 @@
 
     amountInput.addEventListener("input", syncAmountChips);
 
-    const txTypeInput = document.getElementById("txType");
+    const txTypeSelect = document.getElementById("txType");
     const segBtns = Array.from(document.querySelectorAll(".seg-btn"));
-    const categorySelect = document.getElementById("category");
 
-    function setTxType(typeValue, { syncCategory = true } = {}) {
-      txTypeInput.value = typeValue;
+    function setTxType(typeValue) {
+      txTypeSelect.value = typeValue;
       segBtns.forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.type === typeValue);
       });
-
-      if (syncCategory) {
-        if (typeValue === "幫爸爸代墊款") {
-          categorySelect.value = "代墊";
-          if (amountInput.value === "150") {
-            amountInput.value = "";
-          }
-        } else if (typeValue === "日常花費" && categorySelect.value === "代墊") {
-          categorySelect.value = "外食";
-          if (!amountInput.value) {
-            amountInput.value = "150";
-          }
-        }
-        syncAmountChips();
-      }
     }
 
     segBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
-        setTxType(btn.dataset.type, { syncCategory: true });
+        setTxType(btn.dataset.type);
       });
-    });
-
-    categorySelect.addEventListener("change", () => {
-      if (categorySelect.value === "外食" && !amountInput.value && txTypeInput.value === "日常花費") {
-        amountInput.value = "150";
-      } else if (categorySelect.value !== "外食" && amountInput.value === "150") {
-        amountInput.value = "";
-      }
-      syncAmountChips();
     });
 
     const noteInput = document.getElementById("note");
@@ -489,8 +453,7 @@
       noteInput.value = "";
     });
 
-    setTxType("日常花費", { syncCategory: false });
-    categorySelect.value = "外食";
+    setTxType("日常花費");
     amountInput.value = "150";
     syncAmountChips();
 
@@ -567,6 +530,10 @@
         return;
       }
 
+      const isDeduct = (txTypeSelect.value === "扣款分擔");
+      const signedAmount = isDeduct ? -amountNum : amountNum;
+      const defaultCategory = isDeduct ? "其他" : "外食";
+
       submitBtn.disabled = true;
       submitBtn.textContent = "傳送中...";
       statusMsg.style.color = "#555";
@@ -575,11 +542,12 @@
       const payload = {
         userId: lineProfile.userId,
         displayName: lineProfile.displayName,
-        targetMember: targetMemberInput.value, // "本人" | "妍羽" | "丞菲"
+        targetMember: targetMemberInput.value,
         txDate: txDateInput.value || formatLocalDate(0),
-        txType: txTypeInput.value,
-        category: categorySelect.value,
+        txType: txTypeSelect.value,
+        category: defaultCategory,
         amount: amountNum,
+        signedAmount: signedAmount,
         note: noteInput.value.trim(),
         image: compressedImage ? {
           base64: compressedImage.base64,
@@ -605,8 +573,7 @@
               document.getElementById("ledgerForm").reset();
               setTargetMember("本人");
               setDateOffset(0);
-              setTxType("日常花費", { syncCategory: false });
-              categorySelect.value = "外食";
+              setTxType("日常花費");
               amountInput.value = "150";
               syncAmountChips();
               document.getElementById("previewBox").style.display = "none";
