@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>本期零用錢與帳單查詢</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif; }
+    body { margin: 0; padding: 14px; background: #f2f5f8; color: #1f2937; }
+    .container { max-width: 520px; margin: 0 auto; }
+    .header-card { background: #0e6681; color: #fff; border-radius: 14px; padding: 18px; margin-bottom: 12px; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .title { font-size: 18px; font-weight: 700; }
+    .member-tag { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px; font-size: 13px; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+    .controls select { flex: 1; min-width: 140px; padding: 8px 10px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; color: #0e6681; background: #fff; }
+    .net-box { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2); display: flex; justify-content: space-between; align-items: baseline; }
+    .net-label { font-size: 13px; opacity: 0.9; }
+    .net-amount { font-size: 26px; font-weight: 800; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .kpi { background: #fff; border-radius: 10px; padding: 10px 8px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .kpi-title { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+    .kpi-val { font-size: 15px; font-weight: 700; }
+    .pos { color: #047857; }
+    .neg { color: #dc2626; }
+
+    .section { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .section-title { font-size: 15px; font-weight: 700; color: #0e6681; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; }
+    .row-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+    .row-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .row-main { font-weight: 600; }
+    .row-sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-left: 6px; }
+    .badge-term { background: #e0f2fe; color: #0369a1; }
+    .badge-ok { background: #dcfce7; color: #15803d; }
+    .badge-wait { background: #fef3c7; color: #b45309; }
+    .badge-rej { background: #fee2e2; color: #b91c1c; }
+    .empty { text-align: center; color: #9ca3af; font-size: 13px; padding: 12px 0; }
+    .loading { text-align: center; padding: 40px 16px; color: #6b7280; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-card">
+      <div class="header-top">
+        <div class="title">週期零用錢結算單</div>
+        <div id="memberTag" class="member-tag">載入中...</div>
+      </div>
+      <div class="controls">
+        <select id="cycleSelect"></select>
+        <select id="adminTargetSelect" style="display:none;">
+          <option value="盧妍羽">切換查看：盧妍羽</option>
+          <option value="盧丞菲">切換查看：盧丞菲</option>
+        </select>
+      </div>
+      <div class="net-box">
+        <div class="net-label">本期實發總額（含已核可請款）</div>
+        <div id="netTotal" class="net-amount">$0</div>
+      </div>
+    </div>
+
+    <div id="loadingBox" class="loading">正在讀取帳務資料...</div>
+
+    <div id="contentBox" style="display:none;">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-title">固定發放</div>
+          <div id="kpiFixed" class="kpi-val pos">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-title">分期與扣款</div>
+          <div id="kpiDeduct" class="kpi-val neg">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-title">日常請款(已核可)</div>
+          <div id="kpiClaim" class="kpi-val pos">$0</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">固定零用錢與加給</div>
+        <div id="fixedList"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">本期分期與固定分攤</div>
+        <div id="installmentList"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          <span>日常請款與代墊明細</span>
+          <span id="pendingHint" style="font-size:12px; color:#b45309; font-weight:500;"></span>
+        </div>
+        <div id="detailList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 請填入「查詢專用」的新 LIFF ID（或沿用同一個並透過網址路徑區分）
+    const QUERY_LIFF_ID = "YOUR_QUERY_LIFF_ID";
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby8Pa2rFxVwgSSRHZdDurcMRruchImwmaYUS6KJRBielgOho4URi-bNvfCtv2PjU1DK/exec";
+
+    let currentUserId = "";
+
+    function formatMoney(num) {
+      const n = Number(num) || 0;
+      const sign = n < 0 ? "-" : "";
+      return `${sign}$${Math.abs(n).toLocaleString("zh-TW")}`;
+    }
+
+    function fmtDate(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    // 自動產生 20日 ~ 次月19日 週期選單（含下一期預覽、本期、過去4期）
+    function buildCycleOptions() {
+      const select = document.getElementById("cycleSelect");
+      const today = new Date();
+      let baseYear = today.getFullYear();
+      let baseMonth = today.getMonth(); // 0-11
+      if (today.getDate() < 20) {
+        baseMonth -= 1;
+      }
+
+      const offsets = [1, 0, -1, -2, -3, -4]; // +1=下期預覽, 0=本期, -1=上期...
+      offsets.forEach((offset) => {
+        const start = new Date(baseYear, baseMonth + offset, 20);
+        const end = new Date(baseYear, baseMonth + offset + 1, 19);
+        const sStr = fmtDate(start);
+        const eStr = fmtDate(end);
+        let tag = "";
+        if (offset === 0) tag = "（本期）";
+        else if (offset === -1) tag = "（上一期）";
+        else if (offset === 1) tag = "（下期預覽）";
+
+        const opt = document.createElement("option");
+        opt.value = `${sStr}|${eStr}`;
+        opt.textContent = `${sStr} ~ ${eStr}${tag}`;
+        if (offset === 0) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    async function fetchStatement() {
+      if (!currentUserId) return;
+      const loadingBox = document.getElementById("loadingBox");
+      const contentBox = document.getElementById("contentBox");
+      loadingBox.style.display = "block";
+      loadingBox.textContent = "正在讀取帳務資料...";
+      contentBox.style.display = "none";
+
+      const [startDate, endDate] = document.getElementById("cycleSelect").value.split("|");
+      const adminTarget = document.getElementById("adminTargetSelect").value;
+
+      const url = `${GAS_WEB_APP_URL}?userId=${encodeURIComponent(currentUserId)}&startDate=${startDate}&endDate=${endDate}&target=${encodeURIComponent(adminTarget)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "查詢失敗");
+
+        document.getElementById("memberTag").textContent = data.targetName;
+        if (data.isAdmin) {
+          document.getElementById("adminTargetSelect").style.display = "block";
+        }
+
+        document.getElementById("netTotal").textContent = formatMoney(data.summary.netTotal);
+        document.getElementById("kpiFixed").textContent = formatMoney(data.summary.fixedTotal);
+        document.getElementById("kpiDeduct").textContent = formatMoney(data.summary.deductTotal);
+        document.getElementById("kpiClaim").textContent = formatMoney(data.summary.approvedClaimTotal);
+
+        const pendingHint = document.getElementById("pendingHint");
+        pendingHint.textContent = data.summary.pendingCount > 0 ? `另有 ${data.summary.pendingCount} 筆待審核` : "";
+
+        // 渲染固定發放
+        const fixedEl = document.getElementById("fixedList");
+        fixedEl.innerHTML = data.fixedItems.length
+          ? data.fixedItems.map(item => `
+              <div class="row-item">
+                <div>
+                  <div class="row-main">${item.itemName}</div>
+                  <div class="row-sub">${item.note || "每月固定發放"}</div>
+                </div>
+                <div class="row-main pos">${formatMoney(item.amount)}</div>
+              </div>
+            `).join("")
+          : `<div class="empty">本期無固定發放項目</div>`;
+
+        // 渲染分期與扣款
+        const instEl = document.getElementById("installmentList");
+        instEl.innerHTML = data.installmentItems.length
+          ? data.installmentItems.map(item => `
+              <div class="row-item">
+                <div>
+                  <div class="row-main">${item.itemName}<span class="badge badge-term">${item.progressText}</span></div>
+                  <div class="row-sub">${item.note || item.itemType}</div>
+                </div>
+                <div class="row-main neg">${formatMoney(item.amount)}</div>
+              </div>
+            `).join("")
+          : `<div class="empty">本期無分期或固定扣款</div>`;
+
+        // 渲染日常明細
+        const detEl = document.getElementById("detailList");
+        detEl.innerHTML = data.detailList.length
+          ? data.detailList.map(d => {
+              let badgeCls = "badge-wait";
+              if (d.approval === "已核可") badgeCls = "badge-ok";
+              else if (d.approval === "退回") badgeCls = "badge-rej";
+              const amtCls = d.amount >= 0 ? "pos" : "neg";
+              return `
+                <div class="row-item">
+                  <div>
+                    <div class="row-main">${d.txDate}｜${d.category}<span class="badge ${badgeCls}">${d.approval}</span></div>
+                    <div class="row-sub">${d.note || d.txType}</div>
+                  </div>
+                  <div class="row-main ${amtCls}">${formatMoney(d.amount)}</div>
+                </div>
+              `;
+            }).join("")
+          : `<div class="empty">本週期尚無記帳明細</div>`;
+
+        loadingBox.style.display = "none";
+        contentBox.style.display = "block";
+      } catch (err) {
+        loadingBox.textContent = "讀取失敗：" + err.message;
+      }
+    }
+
+    async function init() {
+      buildCycleOptions();
+      document.getElementById("cycleSelect").addEventListener("change", fetchStatement);
+      document.getElementById("adminTargetSelect").addEventListener("change", fetchStatement);
+
+      try {
+        await liff.init({ liffId: QUERY_LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        const profile = await liff.getProfile();
+        currentUserId = profile.userId;
+        fetchStatement();
+      } catch (err) {
+        document.getElementById("loadingBox").textContent = "LIFF 初始化失敗，請從 LINE 開啟";
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
