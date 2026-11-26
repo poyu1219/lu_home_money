@@ -6,253 +6,21 @@
   <title>家庭記帳表單</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
-    }
-    body {
-      margin: 0;
-      padding: 14px;
-      background: #f4f6f8;
-      color: #222;
-    }
-    .card {
-      max-width: 480px;
-      margin: 0 auto;
-      background: #fff;
-      border-radius: 14px;
-      padding: 18px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-    }
-    h2 {
-      margin: 0 0 4px;
-      font-size: 20px;
-    }
-    .user-badge {
-      font-size: 13px;
-      color: #555;
-      margin-bottom: 16px;
-    }
-    .form-group {
-      margin-bottom: 15px;
-    }
-    label {
-      display: block;
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-    input, select, textarea {
-      display: block;
-      width: 100%;
-      min-width: 0;
-      height: 44px;
-      padding: 10px 12px;
-      border: 1px solid #d0d7de;
-      border-radius: 10px;
-      font-size: 15px;
-      color: #222;
-      background: #fff;
-    }
-    input[type="date"] {
-      -webkit-appearance: none;
-      appearance: none;
-      line-height: 22px;
-    }
-    input[type="date"]::-webkit-date-and-time-value {
-      text-align: left;
-    }
-    input[type="file"] {
-      height: auto;
-      padding: 9px 12px;
-    }
-    input:focus, select:focus, textarea:focus {
-      outline: none;
-      border-color: #06c755;
-    }
-
-    /* 記帳對象切換（支援家長代登） */
-    .member-group {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-    .member-btn {
-      height: 40px;
-      border: 1.5px solid #d0d7de;
-      border-radius: 10px;
-      background: #f8fafc;
-      color: #333;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .member-btn.active {
-      background: #fff7ed;
-      border-color: #f97316;
-      color: #c2410c;
-    }
-    .member-btn.active[data-member="本人"] {
-      background: #eafaf0;
-      border-color: #06c755;
-      color: #05662b;
-    }
-
-    /* 交易類型分段切換 */
-    .segmented {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    .seg-btn {
-      padding: 10px;
-      border: 1.5px solid #d0d7de;
-      border-radius: 10px;
-      background: #f8fafc;
-      color: #333;
-      cursor: pointer;
-      text-align: left;
-      transition: all 0.15s ease;
-    }
-    .seg-btn .seg-title {
-      display: block;
-      font-size: 15px;
-      font-weight: 700;
-    }
-    .seg-btn .seg-sub {
-      display: block;
-      font-size: 11px;
-      color: #666;
-      margin-top: 2px;
-    }
-    .seg-btn.active[data-type="日常花費"] {
-      background: #eafaf0;
-      border-color: #06c755;
-      color: #05662b;
-    }
-    .seg-btn.active[data-type="日常花費"] .seg-sub {
-      color: #067d34;
-    }
-    .seg-btn.active[data-type="幫爸爸代墊款"] {
-      background: #eef5ff;
-      border-color: #2563eb;
-      color: #1d4ed8;
-    }
-    .seg-btn.active[data-type="幫爸爸代墊款"] .seg-sub {
-      color: #1e40af;
-    }
-
-    /* 日期列 + 快捷按鈕 */
-    .date-row {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-    .date-row input[type="date"] {
-      flex: 1;
-    }
-    .chip-btn {
-      flex-shrink: 0;
-      height: 44px;
-      padding: 0 11px;
-      border: 1px solid #d0d7de;
-      border-radius: 10px;
-      background: #f6f8fa;
-      color: #333;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .chip-btn:active {
-      background: #e5e9ef;
-    }
-
-    /* 常用金額快選 */
-    .quick-amounts {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .amt-chip {
-      flex: 1 1 calc(20% - 7px);
-      min-width: 54px;
-      height: 36px;
-      border: 1px solid #d0d7de;
-      border-radius: 8px;
-      background: #f8fafc;
-      color: #222;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .amt-chip.active {
-      background: #06c755;
-      border-color: #06c755;
-      color: #fff;
-    }
-
-    /* 備註快選標籤 */
-    .quick-notes {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 8px;
-    }
-    .note-tag {
-      height: 30px;
-      padding: 0 10px;
-      border: 1px solid #d0d7de;
-      border-radius: 999px;
-      background: #f8fafc;
-      color: #333;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .note-tag:active {
-      background: #e6f7ed;
-      border-color: #06c755;
-      color: #05662b;
-    }
-    .note-tag.clear-tag {
-      background: #fff5f5;
-      border-color: #fecaca;
-      color: #b91c1c;
-    }
-
-    .preview-box {
-      margin-top: 8px;
-      display: none;
-      text-align: center;
-    }
-    .preview-box img {
-      max-width: 100%;
-      max-height: 220px;
-      border-radius: 8px;
-      border: 1px solid #e1e4e8;
-    }
-    .btn-submit {
-      width: 100%;
-      height: 48px;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: 700;
-      color: #fff;
-      background: #06c755;
-      cursor: pointer;
-    }
-    .btn-submit:disabled {
-      background: #9ad8b4;
-      cursor: not-allowed;
-    }
-    .status {
-      margin-top: 12px;
-      font-size: 14px;
-      text-align: center;
-      min-height: 20px;
-    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif; }
+    body { margin: 0; padding: 16px; background: #f4f6f8; color: #222; }
+    .card { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+    h2 { margin: 0 0 6px; font-size: 20px; }
+    .user-badge { font-size: 13px; color: #555; margin-bottom: 16px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 15px; background: #fff; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #06c755; }
+    .hint { font-size: 12px; color: #666; margin-top: 4px; }
+    .preview-box { margin-top: 8px; display: none; text-align: center; }
+    .preview-box img { max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid #e1e4e8; }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; color: #fff; background: #06c755; cursor: pointer; }
+    .btn:disabled { background: #9ad8b4; cursor: not-allowed; }
+    .status { margin-top: 12px; font-size: 14px; text-align: center; min-height: 20px; }
   </style>
 </head>
 <body>
@@ -261,73 +29,51 @@
     <div id="userBadge" class="user-badge">正在取得 LINE 身分...</div>
 
     <form id="ledgerForm">
-      <!-- 新增：記帳對象（預設本人，家長代登時可一鍵切換） -->
       <div class="form-group">
-        <label>記帳對象 *</label>
-        <input type="hidden" id="targetMember" value="本人" />
-        <div class="member-group" role="group" aria-label="記帳對象">
-          <button type="button" class="member-btn active" data-member="本人">本人</button>
-          <button type="button" class="member-btn" data-member="妍羽">代登：妍羽</button>
-          <button type="button" class="member-btn" data-member="丞菲">代登：丞菲</button>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>交易類型 *</label>
-        <input type="hidden" id="txType" value="日常花費" required />
-        <div class="segmented" role="group" aria-label="交易類型">
-          <button type="button" class="seg-btn active" data-type="日常花費">
-            <span class="seg-title">日常花費</span>
-            <span class="seg-sub">扣款・計入月花費</span>
-          </button>
-          <button type="button" class="seg-btn" data-type="幫爸爸代墊款">
-            <span class="seg-title">幫爸爸代墊款</span>
-            <span class="seg-sub">補回餘額・不計個人</span>
-          </button>
-        </div>
+        <label for="targetMember">記帳對象 *</label>
+        <select id="targetMember" required>
+          <option value="AUTO">自動（依本人 LINE 帳號）</option>
+          <option value="盧妍羽">盧妍羽（家長代登 / 指定）</option>
+          <option value="盧丞菲">盧丞菲（家長代登 / 指定）</option>
+        </select>
+        <div class="hint">本人填寫選「自動」即可；爸爸代登請直接選擇對應女兒</div>
       </div>
 
       <div class="form-group">
         <label for="txDate">消費日期（預設當天） *</label>
-        <div class="date-row">
-          <input type="date" id="txDate" required />
-          <button type="button" id="todayBtn" class="chip-btn">今天</button>
-          <button type="button" id="yesterdayBtn" class="chip-btn">昨天</button>
-        </div>
+        <input type="date" id="txDate" required />
+      </div>
+
+      <div class="form-group">
+        <label for="txType">交易類型 *</label>
+        <select id="txType" required>
+          <option value="日常花費">日常花費（+ 請款，計入爸爸應發放金額）</option>
+          <option value="幫爸爸代墊款">幫爸爸代墊款（+ 補款，計入爸爸應發放金額）</option>
+          <option value="扣款分擔">扣款 / 分擔費用（- 從零用錢扣除）</option>
+        </select>
       </div>
 
       <div class="form-group">
         <label for="category">項目分類 *</label>
         <select id="category" required>
-          <option value="外食">外食</option>
+          <option value="早餐">早餐</option>
+          <option value="午餐">午餐</option>
+          <option value="晚餐">晚餐</option>
           <option value="交通">交通</option>
           <option value="代墊">代墊</option>
+          <option value="醫療/日用">醫療 / 日用</option>
           <option value="其他">其他</option>
         </select>
       </div>
 
       <div class="form-group">
         <label for="amount">金額（請輸入正數） *</label>
-        <input type="number" id="amount" min="1" step="1" inputmode="numeric" placeholder="例如：150" required />
-        <div class="quick-amounts" id="quickAmounts">
-          <button type="button" class="amt-chip" data-amt="100">100</button>
-          <button type="button" class="amt-chip" data-amt="150">150</button>
-          <button type="button" class="amt-chip" data-amt="200">200</button>
-          <button type="button" class="amt-chip" data-amt="500">500</button>
-          <button type="button" class="amt-chip" data-amt="1000">1000</button>
-        </div>
+        <input type="number" id="amount" min="1" step="1" placeholder="例如：150" required />
       </div>
 
       <div class="form-group">
         <label for="note">備註說明</label>
-        <input type="text" id="note" placeholder="例如：便當、買立可帶、幫爸買藥" />
-        <div class="quick-notes" id="quickNotes">
-          <button type="button" class="note-tag" data-note="中午便當">中午便當</button>
-          <button type="button" class="note-tag" data-note="晚上便當">晚上便當</button>
-          <button type="button" class="note-tag" data-note="含家人合買的餐點">含家人合買的餐點</button>
-          <button type="button" class="note-tag" data-note="看醫生">看醫生</button>
-          <button type="button" class="note-tag clear-tag" id="clearNoteBtn">清空</button>
-        </div>
+        <input type="text" id="note" placeholder="例如：便當、買立可帶、幫爸買晚餐" />
       </div>
 
       <div class="form-group">
@@ -338,7 +84,7 @@
         </div>
       </div>
 
-      <button type="submit" id="submitBtn" class="btn-submit">送出審核</button>
+      <button type="submit" id="submitBtn" class="btn">送出審核</button>
       <div id="statusMsg" class="status"></div>
     </form>
   </div>
@@ -349,6 +95,35 @@
 
     let lineProfile = { userId: "", displayName: "未知使用者" };
     let compressedImage = null;
+
+    const txDateInput = document.getElementById("txDate");
+    const categorySelect = document.getElementById("category");
+    const amountInput = document.getElementById("amount");
+    const mealCategories = ["早餐", "午餐", "晚餐"];
+
+    function getLocalTodayStr() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function resetDateToToday() {
+      txDateInput.value = getLocalTodayStr();
+    }
+
+    function applyDefaultMealAmount() {
+      if (mealCategories.includes(categorySelect.value)) {
+        amountInput.value = 150;
+      } else if (amountInput.value === "150") {
+        amountInput.value = "";
+      }
+    }
+
+    categorySelect.addEventListener("change", applyDefaultMealAmount);
+    resetDateToToday();
+    applyDefaultMealAmount();
 
     async function initLiff() {
       try {
@@ -362,137 +137,12 @@
           userId: profile.userId,
           displayName: profile.displayName
         };
-        document.getElementById("userBadge").textContent = `操作者：${lineProfile.displayName}`;
+        document.getElementById("userBadge").textContent = `目前登入：${lineProfile.displayName}`;
       } catch (err) {
         document.getElementById("userBadge").textContent = "LIFF 初始化失敗，請從 LINE 開啟";
         console.error(err);
       }
     }
-
-    // 記帳對象切換邏輯
-    const targetMemberInput = document.getElementById("targetMember");
-    const memberBtns = Array.from(document.querySelectorAll(".member-btn"));
-
-    function setTargetMember(memberName) {
-      targetMemberInput.value = memberName;
-      memberBtns.forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.member === memberName);
-      });
-      // 若切換為幫小朋友代登，自動切回「日常花費」避免誤選代墊
-      if (memberName !== "本人" && txTypeInput.value === "幫爸爸代墊款") {
-        setTxType("日常花費", { syncCategory: true });
-      }
-    }
-
-    memberBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        setTargetMember(btn.dataset.member);
-      });
-    });
-
-    const txDateInput = document.getElementById("txDate");
-
-    function formatLocalDate(offsetDays = 0) {
-      const d = new Date();
-      d.setDate(d.getDate() + offsetDays);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    }
-
-    function setDateOffset(offsetDays = 0) {
-      txDateInput.value = formatLocalDate(offsetDays);
-    }
-
-    document.getElementById("todayBtn").addEventListener("click", () => setDateOffset(0));
-    document.getElementById("yesterdayBtn").addEventListener("click", () => setDateOffset(-1));
-    setDateOffset(0);
-
-    const amountInput = document.getElementById("amount");
-    const amtChips = Array.from(document.querySelectorAll(".amt-chip"));
-
-    function syncAmountChips() {
-      const currentVal = String(amountInput.value || "").trim();
-      amtChips.forEach((chip) => {
-        chip.classList.toggle("active", chip.dataset.amt === currentVal);
-      });
-    }
-
-    amtChips.forEach((chip) => {
-      chip.addEventListener("click", () => {
-        amountInput.value = chip.dataset.amt;
-        syncAmountChips();
-      });
-    });
-
-    amountInput.addEventListener("input", syncAmountChips);
-
-    const txTypeInput = document.getElementById("txType");
-    const segBtns = Array.from(document.querySelectorAll(".seg-btn"));
-    const categorySelect = document.getElementById("category");
-
-    function setTxType(typeValue, { syncCategory = true } = {}) {
-      txTypeInput.value = typeValue;
-      segBtns.forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.type === typeValue);
-      });
-
-      if (syncCategory) {
-        if (typeValue === "幫爸爸代墊款") {
-          categorySelect.value = "代墊";
-          if (amountInput.value === "150") {
-            amountInput.value = "";
-          }
-        } else if (typeValue === "日常花費" && categorySelect.value === "代墊") {
-          categorySelect.value = "外食";
-          if (!amountInput.value) {
-            amountInput.value = "150";
-          }
-        }
-        syncAmountChips();
-      }
-    }
-
-    segBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        setTxType(btn.dataset.type, { syncCategory: true });
-      });
-    });
-
-    categorySelect.addEventListener("change", () => {
-      if (categorySelect.value === "外食" && !amountInput.value && txTypeInput.value === "日常花費") {
-        amountInput.value = "150";
-      } else if (categorySelect.value !== "外食" && amountInput.value === "150") {
-        amountInput.value = "";
-      }
-      syncAmountChips();
-    });
-
-    const noteInput = document.getElementById("note");
-    document.querySelectorAll(".note-tag[data-note]").forEach((tag) => {
-      tag.addEventListener("click", () => {
-        const word = tag.dataset.note;
-        const current = noteInput.value.trim();
-        if (!current) {
-          noteInput.value = word;
-        } else {
-          const parts = current.split("、").map((s) => s.trim()).filter(Boolean);
-          if (!parts.includes(word)) {
-            noteInput.value = `${current}、${word}`;
-          }
-        }
-      });
-    });
-
-    document.getElementById("clearNoteBtn").addEventListener("click", () => {
-      noteInput.value = "";
-    });
-
-    setTxType("日常花費", { syncCategory: false });
-    categorySelect.value = "外食";
-    amountInput.value = "150";
-    syncAmountChips();
 
     function compressImageFile(file, maxSide = 1280, quality = 0.75) {
       return new Promise((resolve, reject) => {
@@ -562,25 +212,23 @@
 
       const amountNum = Math.abs(Number(amountInput.value));
       if (!amountNum || amountNum <= 0) {
-        statusMsg.style.color = "#c62828";
         statusMsg.textContent = "請輸入大於 0 的金額";
         return;
       }
 
       submitBtn.disabled = true;
       submitBtn.textContent = "傳送中...";
-      statusMsg.style.color = "#555";
       statusMsg.textContent = "正在寫入記帳資料...";
 
       const payload = {
         userId: lineProfile.userId,
         displayName: lineProfile.displayName,
-        targetMember: targetMemberInput.value, // "本人" | "妍羽" | "丞菲"
-        txDate: txDateInput.value || formatLocalDate(0),
-        txType: txTypeInput.value,
+        targetMember: document.getElementById("targetMember").value,
+        txDate: txDateInput.value || getLocalTodayStr(),
+        txType: document.getElementById("txType").value,
         category: categorySelect.value,
         amount: amountNum,
-        note: noteInput.value.trim(),
+        note: document.getElementById("note").value.trim(),
         image: compressedImage ? {
           base64: compressedImage.base64,
           mimeType: compressedImage.mimeType,
@@ -597,20 +245,16 @@
         const result = await res.json();
         if (result.ok) {
           statusMsg.style.color = "#067d34";
-          statusMsg.textContent = `已送出（${result.memberName}），等待家長核可！`;
+          statusMsg.textContent = `已送出（對象：${result.memberName}），等待家長核可！`;
           setTimeout(() => {
             if (liff.isInClient()) {
               liff.closeWindow();
             } else {
               document.getElementById("ledgerForm").reset();
-              setTargetMember("本人");
-              setDateOffset(0);
-              setTxType("日常花費", { syncCategory: false });
-              categorySelect.value = "外食";
-              amountInput.value = "150";
-              syncAmountChips();
               document.getElementById("previewBox").style.display = "none";
               compressedImage = null;
+              resetDateToToday();
+              applyDefaultMealAmount();
               submitBtn.disabled = false;
               submitBtn.textContent = "送出審核";
             }
