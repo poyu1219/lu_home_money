@@ -223,4 +223,217 @@
         </select>
       </div>
       <div class="net-box">
-        <div class="
+        <div class="net-label">本期實發總額（含已核可請款）</div>
+        <div id="netTotal" class="net-amount">$0</div>
+      </div>
+    </div>
+
+    <div id="loadingBox" class="loading">正在讀取帳務資料...</div>
+
+    <div id="contentBox" style="display:none;">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-title">固定發放</div>
+          <div id="kpiFixed" class="kpi-val pos">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-title">分期與扣款</div>
+          <div id="kpiDeduct" class="kpi-val neg">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-title">日常請款(已核可)</div>
+          <div id="kpiClaim" class="kpi-val pos">$0</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">固定零用錢與加給</div>
+        <div id="fixedList"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">本期分期與固定分攤</div>
+        <div id="installmentList"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          <span>日常請款與代墊明細</span>
+          <span id="pendingHint" style="font-size:12px; color:#b45309; font-weight:500;"></span>
+        </div>
+        <div id="detailList"></div>
+      </div>
+
+      <a href="index.html" class="back-btn">← 返回記帳表單</a>
+    </div>
+  </div>
+
+  <script>
+    // 請填入「查詢專用」的 LIFF ID
+    const QUERY_LIFF_ID = "2012774343-jwoLh74x";
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby2YeKAmGB00nFr1xeNUUzmubRA46Yhuv9DFsDQWRXvzpz2TEX6svO1nTrVUCeZ4VSq/exec";
+
+    let currentUserId = "";
+
+    function formatMoney(num) {
+      const n = Number(num) || 0;
+      const sign = n < 0 ? "-" : "";
+      return `${sign}$${Math.abs(n).toLocaleString("zh-TW")}`;
+    }
+
+    function fmtDate(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    // 自動產生 20日 ~ 次月19日 週期選單（含下期預覽、本期、過去4期）
+    function buildCycleOptions() {
+      const select = document.getElementById("cycleSelect");
+      const today = new Date();
+      let baseYear = today.getFullYear();
+      let baseMonth = today.getMonth();
+      if (today.getDate() < 20) {
+        baseMonth -= 1;
+      }
+
+      const offsets = [1, 0, -1, -2, -3, -4];
+      offsets.forEach((offset) => {
+        const start = new Date(baseYear, baseMonth + offset, 20);
+        const end = new Date(baseYear, baseMonth + offset + 1, 19);
+        const sStr = fmtDate(start);
+        const eStr = fmtDate(end);
+        let tag = "";
+        if (offset === 0) tag = "（本期）";
+        else if (offset === -1) tag = "（上一期）";
+        else if (offset === 1) tag = "（下期預覽）";
+
+        const opt = document.createElement("option");
+        opt.value = `${sStr}|${eStr}`;
+        opt.textContent = `${sStr} ~ ${eStr}${tag}`;
+        if (offset === 0) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    async function fetchStatement() {
+      if (!currentUserId) return;
+      const loadingBox = document.getElementById("loadingBox");
+      const contentBox = document.getElementById("contentBox");
+      loadingBox.style.display = "block";
+      loadingBox.textContent = "正在讀取帳務資料...";
+      contentBox.style.display = "none";
+
+      const [startDate, endDate] = document.getElementById("cycleSelect").value.split("|");
+      const adminTarget = document.getElementById("adminTargetSelect").value;
+
+      const url = `${GAS_WEB_APP_URL}?userId=${encodeURIComponent(currentUserId)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&target=${encodeURIComponent(adminTarget)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "查詢失敗");
+
+        document.getElementById("memberTag").textContent = data.targetName;
+        if (data.isAdmin) {
+          document.getElementById("adminTargetSelect").style.display = "block";
+        }
+
+        document.getElementById("netTotal").textContent = formatMoney(data.summary.netTotal);
+        document.getElementById("kpiFixed").textContent = formatMoney(data.summary.fixedTotal);
+        document.getElementById("kpiDeduct").textContent = formatMoney(data.summary.deductTotal);
+        document.getElementById("kpiClaim").textContent = formatMoney(data.summary.approvedClaimTotal);
+
+        const pendingHint = document.getElementById("pendingHint");
+        pendingHint.textContent = data.summary.pendingCount > 0 ? `另有 ${data.summary.pendingCount} 筆待審核` : "";
+
+        // 渲染固定發放
+        const fixedEl = document.getElementById("fixedList");
+        fixedEl.innerHTML = data.fixedItems.length
+          ? data.fixedItems.map((item) => `
+              <div class="row-item">
+                <div>
+                  <div class="row-main">${escapeHtml(item.itemName)}</div>
+                  <div class="row-sub">${escapeHtml(item.note || "每月固定發放")}</div>
+                </div>
+                <div class="row-main pos">${formatMoney(item.amount)}</div>
+              </div>
+            `).join("")
+          : `<div class="empty">本期無固定發放項目</div>`;
+
+        // 渲染分期與扣款
+        const instEl = document.getElementById("installmentList");
+        instEl.innerHTML = data.installmentItems.length
+          ? data.installmentItems.map((item) => `
+              <div class="row-item">
+                <div>
+                  <div class="row-main">${escapeHtml(item.itemName)}<span class="badge badge-term">${escapeHtml(item.progressText)}</span></div>
+                  <div class="row-sub">${escapeHtml(item.note || item.itemType)}</div>
+                </div>
+                <div class="row-main neg">${formatMoney(item.amount)}</div>
+              </div>
+            `).join("")
+          : `<div class="empty">本期無分期或固定扣款</div>`;
+
+        // 渲染日常明細（已移除分類欄位，改顯示交易類型）
+        const detEl = document.getElementById("detailList");
+        detEl.innerHTML = data.detailList.length
+          ? data.detailList.map((d) => {
+              let badgeCls = "badge-wait";
+              if (d.approval === "已核可") badgeCls = "badge-ok";
+              else if (d.approval === "退回") badgeCls = "badge-rej";
+              const amtCls = d.amount >= 0 ? "pos" : "neg";
+              const receiptHtml = d.receiptUrl
+                ? `<a class="receipt-link" href="${escapeHtml(d.receiptUrl)}" target="_blank" rel="noopener noreferrer">查看收據</a>`
+                : "";
+              return `
+                <div class="row-item">
+                  <div>
+                    <div class="row-main">${escapeHtml(d.txDate)}｜${escapeHtml(d.txType || "日常花費")}<span class="badge ${badgeCls}">${escapeHtml(d.approval)}</span></div>
+                    <div class="row-sub">${escapeHtml(d.note || "無備註")}${receiptHtml}</div>
+                  </div>
+                  <div class="row-main ${amtCls}">${formatMoney(d.amount)}</div>
+                </div>
+              `;
+            }).join("")
+          : `<div class="empty">本週期尚無記帳明細</div>`;
+
+        loadingBox.style.display = "none";
+        contentBox.style.display = "block";
+      } catch (err) {
+        loadingBox.textContent = "讀取失敗：" + err.message;
+      }
+    }
+
+    async function init() {
+      buildCycleOptions();
+      document.getElementById("cycleSelect").addEventListener("change", fetchStatement);
+      document.getElementById("adminTargetSelect").addEventListener("change", fetchStatement);
+
+      try {
+        await liff.init({ liffId: QUERY_LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        const profile = await liff.getProfile();
+        currentUserId = profile.userId;
+        fetchStatement();
+      } catch (err) {
+        document.getElementById("loadingBox").textContent = "LIFF 初始化失敗，請從 LINE 開啟";
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
