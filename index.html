@@ -134,13 +134,13 @@
     .seg-btn.active[data-type="日常花費"] .seg-sub {
       color: #067d34;
     }
-    .seg-btn.active[data-type="扣款分擔"] {
-      background: #fef2f2;
-      border-color: #ef4444;
-      color: #b91c1c;
+    .seg-btn.active[data-type="幫爸爸代墊款"] {
+      background: #eef5ff;
+      border-color: #2563eb;
+      color: #1d4ed8;
     }
-    .seg-btn.active[data-type="扣款分擔"] .seg-sub {
-      color: #dc2626;
+    .seg-btn.active[data-type="幫爸爸代墊款"] .seg-sub {
+      color: #1e40af;
     }
 
     /* 日期列 + 快捷按鈕 */
@@ -261,7 +261,7 @@
     <div id="userBadge" class="user-badge">正在取得 LINE 身分...</div>
 
     <form id="ledgerForm">
-      <!-- 記帳對象（預設本人，家長代登時可一鍵切換） -->
+      <!-- 新增：記帳對象（預設本人，家長代登時可一鍵切換） -->
       <div class="form-group">
         <label>記帳對象 *</label>
         <input type="hidden" id="targetMember" value="本人" />
@@ -274,18 +274,15 @@
 
       <div class="form-group">
         <label>交易類型 *</label>
-        <select id="txType" required style="display:none;">
-          <option value="日常花費">日常花費（+ 請款，計入爸爸應發放金額）</option>
-          <option value="扣款分擔">扣款分擔（- 從零用錢扣除）</option>
-        </select>
+        <input type="hidden" id="txType" value="日常花費" required />
         <div class="segmented" role="group" aria-label="交易類型">
           <button type="button" class="seg-btn active" data-type="日常花費">
             <span class="seg-title">日常花費</span>
-            <span class="seg-sub">+ 請款，計入爸爸應發放金額</span>
+            <span class="seg-sub">扣款・計入月花費</span>
           </button>
-          <button type="button" class="seg-btn" data-type="扣款分擔">
-            <span class="seg-title">扣款分擔</span>
-            <span class="seg-sub">- 從零用錢扣除</span>
+          <button type="button" class="seg-btn" data-type="幫爸爸代墊款">
+            <span class="seg-title">幫爸爸代墊款</span>
+            <span class="seg-sub">補回餘額・不計個人</span>
           </button>
         </div>
       </div>
@@ -365,7 +362,43 @@
           userId: profile.userId,
           displayName: profile.displayName
         };
-        document.getElementById("userBadge").textContent = `操作者：${lineProfile.displayName}`; } catch (err) { document.getElementById("userBadge").textContent = "LIFF 初始化失敗，請從 LINE 開啟"; console.error(err); } }  // 記帳對象切換邏輯 const targetMemberInput = document.getElementById("targetMember"); const memberBtns = Array.from(document.querySelectorAll(".member-btn"));  function setTargetMember(memberName) { targetMemberInput.value = memberName; memberBtns.forEach((btn) => { btn.classList.toggle("active", btn.dataset.member === memberName); }); }  memberBtns.forEach((btn) => { btn.addEventListener("click", () => { setTargetMember(btn.dataset.member); }); });  const txDateInput = document.getElementById("txDate");  function formatLocalDate(offsetDays = 0) { const d = new Date(); d.setDate(d.getDate() + offsetDays); const year = d.getFullYear(); const month = String(d.getMonth() + 1).padStart(2, "0"); const day = String(d.getDate()).padStart(2, "0"); return `${year}-${month}-${day}`;
+        document.getElementById("userBadge").textContent = `操作者：${lineProfile.displayName}`;
+      } catch (err) {
+        document.getElementById("userBadge").textContent = "LIFF 初始化失敗，請從 LINE 開啟";
+        console.error(err);
+      }
+    }
+
+    // 記帳對象切換邏輯
+    const targetMemberInput = document.getElementById("targetMember");
+    const memberBtns = Array.from(document.querySelectorAll(".member-btn"));
+
+    function setTargetMember(memberName) {
+      targetMemberInput.value = memberName;
+      memberBtns.forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.member === memberName);
+      });
+      // 若切換為幫小朋友代登，自動切回「日常花費」避免誤選代墊
+      if (memberName !== "本人" && txTypeInput.value === "幫爸爸代墊款") {
+        setTxType("日常花費", { syncCategory: true });
+      }
+    }
+
+    memberBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setTargetMember(btn.dataset.member);
+      });
+    });
+
+    const txDateInput = document.getElementById("txDate");
+
+    function formatLocalDate(offsetDays = 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
     }
 
     function setDateOffset(offsetDays = 0) {
@@ -395,25 +428,40 @@
 
     amountInput.addEventListener("input", syncAmountChips);
 
-    const txTypeSelect = document.getElementById("txType");
+    const txTypeInput = document.getElementById("txType");
     const segBtns = Array.from(document.querySelectorAll(".seg-btn"));
     const categorySelect = document.getElementById("category");
 
-    function setTxType(typeValue) {
-      txTypeSelect.value = typeValue;
+    function setTxType(typeValue, { syncCategory = true } = {}) {
+      txTypeInput.value = typeValue;
       segBtns.forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.type === typeValue);
       });
+
+      if (syncCategory) {
+        if (typeValue === "幫爸爸代墊款") {
+          categorySelect.value = "代墊";
+          if (amountInput.value === "150") {
+            amountInput.value = "";
+          }
+        } else if (typeValue === "日常花費" && categorySelect.value === "代墊") {
+          categorySelect.value = "外食";
+          if (!amountInput.value) {
+            amountInput.value = "150";
+          }
+        }
+        syncAmountChips();
+      }
     }
 
     segBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
-        setTxType(btn.dataset.type);
+        setTxType(btn.dataset.type, { syncCategory: true });
       });
     });
 
     categorySelect.addEventListener("change", () => {
-      if (categorySelect.value === "外食" && !amountInput.value && txTypeSelect.value === "日常花費") {
+      if (categorySelect.value === "外食" && !amountInput.value && txTypeInput.value === "日常花費") {
         amountInput.value = "150";
       } else if (categorySelect.value !== "外食" && amountInput.value === "150") {
         amountInput.value = "";
@@ -441,7 +489,7 @@
       noteInput.value = "";
     });
 
-    setTxType("日常花費");
+    setTxType("日常花費", { syncCategory: false });
     categorySelect.value = "外食";
     amountInput.value = "150";
     syncAmountChips();
@@ -519,8 +567,6 @@
         return;
       }
 
-      const signedAmount = (txTypeSelect.value === "扣款分擔") ? -amountNum : amountNum;
-
       submitBtn.disabled = true;
       submitBtn.textContent = "傳送中...";
       statusMsg.style.color = "#555";
@@ -529,12 +575,11 @@
       const payload = {
         userId: lineProfile.userId,
         displayName: lineProfile.displayName,
-        targetMember: targetMemberInput.value,
+        targetMember: targetMemberInput.value, // "本人" | "妍羽" | "丞菲"
         txDate: txDateInput.value || formatLocalDate(0),
-        txType: txTypeSelect.value,
+        txType: txTypeInput.value,
         category: categorySelect.value,
         amount: amountNum,
-        signedAmount: signedAmount,
         note: noteInput.value.trim(),
         image: compressedImage ? {
           base64: compressedImage.base64,
@@ -552,4 +597,36 @@
         const result = await res.json();
         if (result.ok) {
           statusMsg.style.color = "#067d34";
-          statusMsg.textContent = `已
+          statusMsg.textContent = `已送出（${result.memberName}），等待家長核可！`;
+          setTimeout(() => {
+            if (liff.isInClient()) {
+              liff.closeWindow();
+            } else {
+              document.getElementById("ledgerForm").reset();
+              setTargetMember("本人");
+              setDateOffset(0);
+              setTxType("日常花費", { syncCategory: false });
+              categorySelect.value = "外食";
+              amountInput.value = "150";
+              syncAmountChips();
+              document.getElementById("previewBox").style.display = "none";
+              compressedImage = null;
+              submitBtn.disabled = false;
+              submitBtn.textContent = "送出審核";
+            }
+          }, 1000);
+        } else {
+          throw new Error(result.error || "寫入失敗");
+        }
+      } catch (err) {
+        statusMsg.style.color = "#c62828";
+        statusMsg.textContent = "送出失敗：" + err.message;
+        submitBtn.disabled = false;
+        submitBtn.textContent = "送出審核";
+      }
+    });
+
+    initLiff();
+  </script>
+</body>
+</html>
