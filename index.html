@@ -566,7 +566,8 @@
         const result = await res.json();
         if (result.ok) {
           statusMsg.style.color = "#067d34";
-          statusMsg.textContent = `已送出（${result.memberName}），等待家長核可！`;
+          const statusLabel = result.approvalStatus || "待審核";
+          statusMsg.textContent = `已送出（${result.memberName}｜${statusLabel}）！`;
           setTimeout(() => {
             if (liff.isInClient()) {
               liff.closeWindow();
