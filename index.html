@@ -192,6 +192,14 @@
       border-color: #06c755;
       color: #fff;
     }
+    .amt-chip.clear-amt-chip {
+      background: #fff5f5;
+      border-color: #fecaca;
+      color: #b91c1c;
+    }
+    .amt-chip.clear-amt-chip:active {
+      background: #fee2e2;
+    }
 
     /* 備註快選標籤 */
     .quick-notes {
@@ -307,7 +315,7 @@
           <button type="button" class="amt-chip" data-amt="150">150</button>
           <button type="button" class="amt-chip" data-amt="200">200</button>
           <button type="button" class="amt-chip" data-amt="500">500</button>
-          <button type="button" class="amt-chip" data-amt="1000">1000</button>
+          <button type="button" class="amt-chip clear-amt-chip" id="clearAmountBtn">清空</button>
         </div>
       </div>
 
@@ -400,7 +408,7 @@
     setDateOffset(0);
 
     const amountInput = document.getElementById("amount");
-    const amtChips = Array.from(document.querySelectorAll(".amt-chip"));
+    const amtChips = Array.from(document.querySelectorAll(".amt-chip[data-amt]"));
 
     function syncAmountChips() {
       const currentVal = String(amountInput.value || "").trim();
@@ -414,6 +422,12 @@
         amountInput.value = chip.dataset.amt;
         syncAmountChips();
       });
+    });
+
+    document.getElementById("clearAmountBtn").addEventListener("click", () => {
+      amountInput.value = "";
+      syncAmountChips();
+      amountInput.focus();
     });
 
     amountInput.addEventListener("input", syncAmountChips);
